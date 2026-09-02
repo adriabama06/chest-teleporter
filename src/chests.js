@@ -57,11 +57,11 @@ export class OpenChest {
 
             try {
                 await this.bot.clickWindow(targetItem.slot, 0, 1);
-                await sleep(100);
+                await bot.waitForTicks(2);
             } catch {
                 try {
                     await this.container.withdraw(targetItem.type, null, targetItem.count);
-                    await sleep(100);
+                    await bot.waitForTicks(2);
                 } catch { }
             }
         }
@@ -81,11 +81,11 @@ export class OpenChest {
 
             try {
                 await this.bot.clickWindow(i, 0, 1);
-                await sleep(100);
+                await bot.waitForTicks(2);
             } catch {
                 try {
                     await this.container.deposit(slotItem.type, null, slotItem.count);
-                    await sleep(100);
+                    await bot.waitForTicks(2);
                 } catch { break; }
             }
         }
@@ -100,22 +100,22 @@ export class OpenChest {
         if (!item) return;
 
         await this.bot.clickWindow(slot, 0, 0);
-        await sleep(100);
+        await bot.waitForTicks(2);
 
         const botSlots = this.container.slots.slice(this.container.inventoryStart, this.container.inventoryEnd);
         const emptySlot = botSlots.findIndex((s) => !s);
 
         if (emptySlot === -1) {
             await this.bot.clickWindow(slot, 0, 0);
-            await sleep(100);
+            await bot.waitForTicks(2);
             throw new Error("No empty bot inventory slot to pick a single item");
         }
 
         await this.bot.clickWindow(this.container.inventoryStart + emptySlot, 1, 0);
-        await sleep(100);
+        await bot.waitForTicks(2);
 
         await this.bot.clickWindow(slot, 0, 0);
-        await sleep(100);
+        await bot.waitForTicks(2);
     }
 
     /**
@@ -184,13 +184,13 @@ export async function sortChest(bot, container) {
                 if (!itemJ || itemJ.type !== itemI.type) continue;
 
                 await bot.clickWindow(j, 0, 0);
-                await sleep(100);
+                await bot.waitForTicks(2);
                 await bot.clickWindow(i, 0, 0);
-                await sleep(100);
+                await bot.waitForTicks(2);
 
                 if (container.selectedItem) {
                     await bot.clickWindow(j, 0, 0);
-                    await sleep(100);
+                    await bot.waitForTicks(2);
                 }
 
                 const updatedI = container.slots[i];
@@ -209,11 +209,11 @@ export async function sortChest(bot, container) {
 
             if (minIdx !== i) {
                 await bot.clickWindow(i, 0, 0);
-                await sleep(100);
+                await bot.waitForTicks(2);
                 await bot.clickWindow(minIdx, 0, 0);
-                await sleep(100);
+                await bot.waitForTicks(2);
                 await bot.clickWindow(i, 0, 0);
-                await sleep(100);
+                await bot.waitForTicks(2);
             }
         }
 
@@ -221,7 +221,7 @@ export async function sortChest(bot, container) {
             const emptySlot = container.slots.slice(0, capacity).findIndex((s) => !s);
             const targetSlot = emptySlot !== -1 ? emptySlot : 0;
             await bot.clickWindow(targetSlot, 0, 0);
-            await sleep(100);
+            await bot.waitForTicks(2);
         }
     } catch (err) {
         console.error("Error sorting chest:", err);

@@ -164,25 +164,25 @@ export async function SetupEnderPearl(bot, trapdoor_coord) {
 
     const trapdoor = bot.blockAt(trapdoor_coord);
 
-    await sleep(500);
+    await bot.waitForTicks(10);
 
     await bot.look(DirectionToYaw(trapdoor.getProperties().facing), -Math.PI/2); // Look into the direction of the trapdoor & look down
 
-    await sleep(500);
+    await bot.waitForTicks(10);
 
     bot.setControlState("sneak", true);
-    await sleep(500);
+    await bot.waitForTicks(10);
     bot.setControlState("forward", true);
 
     while(!bot.blockAtCursor(20) || bot.blockAtCursor(20).name != "soul_sand") {
         await bot.waitForTicks(1);
     }
 
-    await sleep((1000/20) * 1); // Walk 1 ticks extra
+    await bot.waitForTicks(1); // Walk 1 ticks extra
 
     bot.setControlState("forward", false);
 
-    await sleep(500);
+    await bot.waitForTicks(10);
 
     bot.setControlState("sneak", false);
 

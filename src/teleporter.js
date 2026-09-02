@@ -31,7 +31,7 @@ for (let i = 814; i <= 815; i++) { // Trapdoor
 
 bot.once("spawn", async () => {
     await bot.waitForChunksToLoad();
-    await sleep(500);
+    await bot.waitForTicks(10);
     bot.pathfinder.setMovements(defaultMovements);
 });
 
@@ -74,7 +74,7 @@ bot.on("chat", async (username, message) => {
         
         const temp_container = await bot.openContainer(temp_chest);
 
-        await sleep(500);
+        await bot.waitForTicks(10);
 
         const openchest = new OpenChest(bot, temp_chest, temp_container);
 
@@ -99,7 +99,7 @@ bot.on("chat", async (username, message) => {
 
         const temp_container = await bot.openContainer(temp_chest);
 
-        await sleep(500);
+        await bot.waitForTicks(10);
         
         const openchest = new OpenChest(bot, temp_chest, temp_container);
 

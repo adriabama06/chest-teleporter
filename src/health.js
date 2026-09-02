@@ -42,7 +42,7 @@ export async function autoEat(bot) {
     await bot.lookAt(chest.position);
     const container = await bot.openContainer(chest);
 
-    await sleep(500);
+    await bot.waitForTicks(10);
 
     const openchest = new OpenChest(bot, chest, container);
     const first_item = container.containerItems()[0];
