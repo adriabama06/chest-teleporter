@@ -1,6 +1,24 @@
+import mineflayer from "mineflayer";
+import mineflayer_pathfinder from "mineflayer-pathfinder";
+import { ActivateTrapdoor, DeactivateTrapdoor, ExitTrapdoor, SetupEnderPearl } from "./trapdor.js";
+import { TEMP_CHEST1, TEMP_CHEST2, TRAPDOOR1 } from "./coords.js";
 import sleep from "./sleep.js";
+import { OpenChest } from "./chests.js";
+import { Vec3 } from "vec3";
+
+const { pathfinder, Movements, goals } = mineflayer_pathfinder;
 
 export const MAX_RANGE_CHEST = 4;
+export const CACHE_FILE = "cache.json";
+
+/**
+ * Formats a position as "(x, y, z)" for log messages.
+ * @param {{ x: number, y: number, z: number }} pos
+ * @returns {string}
+ */
+export function formatPos(pos) {
+    return `(${pos.x}, ${pos.y}, ${pos.z})`;
+}
 
 export class OpenChest {
     /**
@@ -148,6 +166,49 @@ export function getContainerCapacity(container) {
         if (!isNaN(cols) && !isNaN(rows)) return cols * rows;
     }
     return container.inventoryStart || 27;
+}
+
+/**
+ * Finds solid floor block below chest position.
+ * @param {import("mineflayer").Bot} bot
+ * @param {import("prismarine-block").Block} chest
+ * @returns {import("prismarine-block").Block | null}
+ */
+export function findFloorBlock(bot, chest) {
+    for (let i = 1; (chest.position.y - i) > -64; i++) {
+        const block = bot.blockAt(new Vec3(chest.position.x, chest.position.y - i, chest.position.z));
+        if (block && !block.name.includes("chest") && !block.name.includes("air")) {
+            return block;
+        }
+    }
+    return null;
+}
+
+/**
+ * Navigates the bot towards a target chest block.
+ * @param {import("mineflayer").Bot} bot
+ * @param {Vec3} chest
+ * @returns {Promise<boolean>}
+ */
+export async function goToChest(bot, chest) {
+    const floorBlock = findFloorBlock(bot, chest);
+    console.log(`[MOVE] Walking to chest at ${formatPos(position)}`);
+
+    if (floorBlock !== null && Math.abs(floorBlock.position.y - bot.entity.position.y) > 1.5) {
+        console.log(`[MOVE] Chest is on a different level, going to floor block at ${formatPos(floorBlock.position)}`);
+        try {
+            await bot.pathfinder.goto(new goals.GoalNear(floorBlock.position.x, floorBlock.position.y, floorBlock.position.z, 1.5));
+        } catch { }
+    }
+
+    try {
+        await bot.pathfinder.goto(new goals.GoalNear(chest.x, chest.y, chest.z, MAX_RANGE_CHEST));
+        console.log(`[MOVE] Reached chest at ${formatPos(chest)}`);
+        return true;
+    } catch {
+        console.log(`[MOVE] Cannot reach chest at ${formatPos(chest)}`);
+        return false;
+    }
 }
 
 /**

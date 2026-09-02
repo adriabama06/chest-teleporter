@@ -20,7 +20,8 @@
   "main": "src/index.js",
   "scripts": {
     "start:teleporter": "node --env-file=.env src/teleporter.js",
-    "start:storagemanager": "node --env-file=.env src/storagemanager.js",
+    "start:storagemanager1": "node --env-file=.env src/storagemanager.js 1",
+    "start:storagemanager2": "node --env-file=.env src/storagemanager.js 2",
     "cache": "node --env-file=.env src/cachebot.js",
     "test": "node --test"
   },

@@ -29,82 +29,82 @@ for (let i = 814; i <= 815; i++) { // Trapdoor
     defaultMovements.blocksToAvoid.add(i);
 }
 
+const TEMP_CHESTS = [TEMP_CHEST1, TEMP_CHEST2];
+
 bot.once("spawn", async () => {
     await bot.waitForChunksToLoad();
     await bot.waitForTicks(10);
     bot.pathfinder.setMovements(defaultMovements);
-});
 
-const TEMP_CHESTS = [TEMP_CHEST1, TEMP_CHEST2];
-
-bot.on("chat", async (username, message) => {
-    if(message == "!pearl") {
-        await SetupEnderPearl(bot, TRAPDOOR1);
-    }
-    if(message == "!act") {
-        await ActivateTrapdoor(bot, TRAPDOOR1);
-    }
-    if(message == "!dea") {
-        await DeactivateTrapdoor(bot, TRAPDOOR1);
-    }
-    if(message == "!come") {
-        const player = bot.players[username];
-        if(player && player.entity) {
-            const goal = new goals.GoalXZ(player.entity.position.x, player.entity.position.z);
-            bot.pathfinder.setGoal(goal);
+    bot.on("chat", async (username, message) => {
+        if (message == "!pearl") {
+            await SetupEnderPearl(bot, TRAPDOOR1);
         }
-    }
-    if(message == "!ex") {
-        await ExitTrapdoor(bot);
-    }
-    if(message == "!get") {
-        const closest_temp_chest = TEMP_CHESTS.reduce((closest, chest) =>
-            bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
-        );
-
-        await bot.pathfinder.goto(new goals.GoalNear(closest_temp_chest.x, closest_temp_chest.y, closest_temp_chest.z, MAX_RANGE_CHEST));
-
-        await bot.lookAt(closest_temp_chest);
-
-        const temp_chest = bot.blockAt(closest_temp_chest);
-
-        if (!temp_chest) {
-            throw new Error(`[DROP] Chest at ${closest_food_chest} is not loaded in world.`);
+        if (message == "!act") {
+            await ActivateTrapdoor(bot, TRAPDOOR1);
         }
-        
-        const temp_container = await bot.openContainer(temp_chest);
-
-        await bot.waitForTicks(10);
-
-        const openchest = new OpenChest(bot, temp_chest, temp_container);
-
-        await openchest.getAllItems();
-
-        openchest.close();
-    }
-    if(message == "!drop") {
-        const closest_temp_chest = TEMP_CHESTS.reduce((closest, chest) =>
-            bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
-        );
-
-        await bot.pathfinder.goto(new goals.GoalNear(closest_temp_chest.x, closest_temp_chest.y, closest_temp_chest.z, MAX_RANGE_CHEST));
-
-        await bot.lookAt(closest_temp_chest);
-
-        const temp_chest = bot.blockAt(closest_temp_chest);
-
-        if (!temp_chest) {
-            throw new Error(`[DROP] Chest at ${closest_food_chest} is not loaded in world.`);
+        if (message == "!dea") {
+            await DeactivateTrapdoor(bot, TRAPDOOR1);
         }
+        if (message == "!come") {
+            const player = bot.players[username];
+            if (player && player.entity) {
+                const goal = new goals.GoalXZ(player.entity.position.x, player.entity.position.z);
+                bot.pathfinder.setGoal(goal);
+            }
+        }
+        if (message == "!ex") {
+            await ExitTrapdoor(bot);
+        }
+        if (message == "!get") {
+            const closest_temp_chest = TEMP_CHESTS.reduce((closest, chest) =>
+                bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
+            );
 
-        const temp_container = await bot.openContainer(temp_chest);
+            await bot.pathfinder.goto(new goals.GoalNear(closest_temp_chest.x, closest_temp_chest.y, closest_temp_chest.z, MAX_RANGE_CHEST));
 
-        await bot.waitForTicks(10);
-        
-        const openchest = new OpenChest(bot, temp_chest, temp_container);
+            await bot.lookAt(closest_temp_chest);
 
-        await openchest.depositAllItems();
+            const temp_chest = bot.blockAt(closest_temp_chest);
 
-        openchest.close();
-    }
+            if (!temp_chest) {
+                throw new Error(`[DROP] Chest at ${closest_food_chest} is not loaded in world.`);
+            }
+
+            const temp_container = await bot.openContainer(temp_chest);
+
+            await bot.waitForTicks(10);
+
+            const openchest = new OpenChest(bot, temp_chest, temp_container);
+
+            await openchest.getAllItems();
+
+            openchest.close();
+        }
+        if (message == "!drop") {
+            const closest_temp_chest = TEMP_CHESTS.reduce((closest, chest) =>
+                bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
+            );
+
+            await bot.pathfinder.goto(new goals.GoalNear(closest_temp_chest.x, closest_temp_chest.y, closest_temp_chest.z, MAX_RANGE_CHEST));
+
+            await bot.lookAt(closest_temp_chest);
+
+            const temp_chest = bot.blockAt(closest_temp_chest);
+
+            if (!temp_chest) {
+                throw new Error(`[DROP] Chest at ${closest_food_chest} is not loaded in world.`);
+            }
+
+            const temp_container = await bot.openContainer(temp_chest);
+
+            await bot.waitForTicks(10);
+
+            const openchest = new OpenChest(bot, temp_chest, temp_container);
+
+            await openchest.depositAllItems();
+
+            openchest.close();
+        }
+    });
 });
