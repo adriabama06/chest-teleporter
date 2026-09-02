@@ -175,7 +175,7 @@ export async function SetupEnderPearl(bot, trapdoor_coord) {
     bot.setControlState("forward", true);
 
     while(!bot.blockAtCursor(20) || bot.blockAtCursor(20).name != "soul_sand") {
-        await sleep(1000/20);
+        await bot.waitForTicks(1);
     }
 
     await sleep((1000/20) * 1); // Walk 1 ticks extra
@@ -201,16 +201,20 @@ export async function ExitTrapdoor(bot) {
         bot.setControlState("forward", true);
         bot.setControlState("jump", true);
 
-        await sleep(1000/20);
+        await bot.waitForTicks(1);
     }
 
     bot.setControlState("jump", false);
 
-    await sleep((1000/20) * 4); // Walk 4 ticks extra
+    await bot.waitForTicks(4); // Walk 4 ticks extra
 
     bot.setControlState("forward", false);
 
-    await sleep((1000/20) * 4); // Wait 4 ticks extra
+    await bot.waitForTicks(4); // Wait 4 ticks extra
 
-    await bot.pathfinder.goto(new goals.GoalBlock(final_position.x, final_position.y, final_position.z)); // Center the bot
+    try {
+        await bot.pathfinder.goto(new goals.GoalBlock(final_position.x, final_position.y, final_position.z)); // Center the bot
+    } catch {
+        // No path to goal
+    }
 }
