@@ -286,7 +286,6 @@ export async function ScanChests(bot, min, max, cachefile) {
         (block.name === "chest" || block.name.includes("copper_chest") /* An example, you can add more types of chests */) &&
         block._properties && typeof block._properties.type === "string" &&
         (block._properties.type === "single" || block._properties.type === "right")
-        && bot.entity.position.distanceTo(block.position) < 20 // Temporal for my tests; TODO: Remove this line
     );
 
     if (chests.length === 0) {
