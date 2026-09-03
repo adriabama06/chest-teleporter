@@ -1,9 +1,9 @@
+import fs from "fs";
 import mineflayer from "mineflayer";
 import mineflayer_pathfinder from "mineflayer-pathfinder";
 import { ActivateTrapdoor, DeactivateTrapdoor, ExitTrapdoor, SetupEnderPearl } from "./trapdor.js";
-import { TEMP_CHEST1, TEMP_CHEST2, TRAPDOOR1 } from "./coords.js";
+import { findBlocks, TEMP_CHEST1, TEMP_CHEST2, TRAPDOOR1 } from "./coords.js";
 import sleep from "./sleep.js";
-import { OpenChest } from "./chests.js";
 import { Vec3 } from "vec3";
 
 const { pathfinder, Movements, goals } = mineflayer_pathfinder;
@@ -67,7 +67,7 @@ export class OpenChest {
     async getAllItems() {
         const items = this.container.containerItems();
 
-        for (let i = 0; i < items.length && this.bot.inventory.items().length < 36; i++) {
+        for (let i = 0; i < items.length && this.bot.inventory.items().length < (9*3); i++) {
             const targetItem = items[i];
             const currentSlotItem = this.container.slots[targetItem.slot];
 
@@ -75,11 +75,11 @@ export class OpenChest {
 
             try {
                 await this.bot.clickWindow(targetItem.slot, 0, 1);
-                await bot.waitForTicks(2);
+                await this.bot.waitForTicks(2);
             } catch {
                 try {
                     await this.container.withdraw(targetItem.type, null, targetItem.count);
-                    await bot.waitForTicks(2);
+                    await this.bot.waitForTicks(2);
                 } catch { }
             }
         }
@@ -99,11 +99,11 @@ export class OpenChest {
 
             try {
                 await this.bot.clickWindow(i, 0, 1);
-                await bot.waitForTicks(2);
+                await this.bot.waitForTicks(2);
             } catch {
                 try {
                     await this.container.deposit(slotItem.type, null, slotItem.count);
-                    await bot.waitForTicks(2);
+                    await this.bot.waitForTicks(2);
                 } catch { break; }
             }
         }
@@ -118,22 +118,22 @@ export class OpenChest {
         if (!item) return;
 
         await this.bot.clickWindow(slot, 0, 0);
-        await bot.waitForTicks(2);
+        await this.bot.waitForTicks(2);
 
         const botSlots = this.container.slots.slice(this.container.inventoryStart, this.container.inventoryEnd);
         const emptySlot = botSlots.findIndex((s) => !s);
 
         if (emptySlot === -1) {
             await this.bot.clickWindow(slot, 0, 0);
-            await bot.waitForTicks(2);
+            await this.bot.waitForTicks(2);
             throw new Error("No empty bot inventory slot to pick a single item");
         }
 
         await this.bot.clickWindow(this.container.inventoryStart + emptySlot, 1, 0);
-        await bot.waitForTicks(2);
+        await this.bot.waitForTicks(2);
 
         await this.bot.clickWindow(slot, 0, 0);
-        await bot.waitForTicks(2);
+        await this.bot.waitForTicks(2);
     }
 
     /**
@@ -171,12 +171,13 @@ export function getContainerCapacity(container) {
 /**
  * Finds solid floor block below chest position.
  * @param {import("mineflayer").Bot} bot
- * @param {import("prismarine-block").Block} chest
+ * @param {import("prismarine-block").Block | import("vec3").Vec3} chest
  * @returns {import("prismarine-block").Block | null}
  */
 export function findFloorBlock(bot, chest) {
-    for (let i = 1; (chest.position.y - i) > -64; i++) {
-        const block = bot.blockAt(new Vec3(chest.position.x, chest.position.y - i, chest.position.z));
+    const pos = chest.position ?? chest;
+    for (let i = 1; (pos.y - i) > -64; i++) {
+        const block = bot.blockAt(new Vec3(pos.x, pos.y - i, pos.z));
         if (block && !block.name.includes("chest") && !block.name.includes("air")) {
             return block;
         }
@@ -187,12 +188,13 @@ export function findFloorBlock(bot, chest) {
 /**
  * Navigates the bot towards a target chest block.
  * @param {import("mineflayer").Bot} bot
- * @param {Vec3} chest
+ * @param {import("prismarine-block").Block | import("vec3").Vec3} chest
  * @returns {Promise<boolean>}
  */
 export async function goToChest(bot, chest) {
-    const floorBlock = findFloorBlock(bot, chest);
-    console.log(`[MOVE] Walking to chest at ${formatPos(position)}`);
+    const pos = chest.position ?? chest;
+    const floorBlock = findFloorBlock(bot, pos);
+    console.log(`[MOVE] Walking to chest at ${formatPos(pos)}`);
 
     if (floorBlock !== null && Math.abs(floorBlock.position.y - bot.entity.position.y) > 1.5) {
         console.log(`[MOVE] Chest is on a different level, going to floor block at ${formatPos(floorBlock.position)}`);
@@ -202,13 +204,39 @@ export async function goToChest(bot, chest) {
     }
 
     try {
-        await bot.pathfinder.goto(new goals.GoalNear(chest.x, chest.y, chest.z, MAX_RANGE_CHEST));
-        console.log(`[MOVE] Reached chest at ${formatPos(chest)}`);
+        await bot.pathfinder.goto(new goals.GoalNear(pos.x, pos.y, pos.z, MAX_RANGE_CHEST));
+        console.log(`[MOVE] Reached chest at ${formatPos(pos)}`);
         return true;
     } catch {
-        console.log(`[MOVE] Cannot reach chest at ${formatPos(chest)}`);
+        console.log(`[MOVE] Cannot reach chest at ${formatPos(pos)}`);
         return false;
     }
+}
+
+/**
+ * Scan a region for chests
+ * @param {import("mineflayer").Bot} bot
+ * @param {import("vec3").Vec3} min
+ * @param {import("vec3").Vec3} max
+ * @param {"area1" | "area2" | undefined} max
+ * @returns {Promise<import("prismarine-block").Block[]>}
+ */
+export async function ScanChests(bot, min, max, cachefile) {
+    // if(cachefile && fs.existsSync(...)) -> Use cache file
+
+    const chests = findBlocks(bot, min, max, (block) =>
+        (block.name === "chest" || block.name.includes("copper_chest") /* An example, you can add more types of chests */) &&
+        block._properties && typeof block._properties.type === "string" &&
+        (block._properties.type === "single" || block._properties.type === "right")
+        && bot.entity.position.distanceTo(block.position) < 20 // Temporal for my tests; TODO: Remove this line
+    );
+
+    if (chests.length === 0) {
+        console.error("Error: No valid drop chests found in the work area.");
+        process.exit(1);
+    }
+
+    return chests;
 }
 
 /**

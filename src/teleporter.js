@@ -3,7 +3,7 @@ import mineflayer_pathfinder from "mineflayer-pathfinder";
 import { ActivateTrapdoor, DeactivateTrapdoor, ExitTrapdoor, SetupEnderPearl } from "./trapdor.js";
 import { TEMP_CHEST1, TEMP_CHEST2, TRAPDOOR1 } from "./coords.js";
 import sleep from "./sleep.js";
-import { OpenChest } from "./chests.js";
+import { OpenChest, MAX_RANGE_CHEST } from "./chests.js";
 
 const { pathfinder, Movements, goals } = mineflayer_pathfinder;
 
@@ -68,7 +68,7 @@ bot.once("spawn", async () => {
             const temp_chest = bot.blockAt(closest_temp_chest);
 
             if (!temp_chest) {
-                throw new Error(`[DROP] Chest at ${closest_food_chest} is not loaded in world.`);
+                throw new Error(`[DROP] Chest at ${closest_temp_chest} is not loaded in world.`);
             }
 
             const temp_container = await bot.openContainer(temp_chest);
@@ -93,7 +93,7 @@ bot.once("spawn", async () => {
             const temp_chest = bot.blockAt(closest_temp_chest);
 
             if (!temp_chest) {
-                throw new Error(`[DROP] Chest at ${closest_food_chest} is not loaded in world.`);
+                throw new Error(`[DROP] Chest at ${closest_temp_chest} is not loaded in world.`);
             }
 
             const temp_container = await bot.openContainer(temp_chest);

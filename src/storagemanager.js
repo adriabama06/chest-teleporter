@@ -1,9 +1,10 @@
 import mineflayer from "mineflayer";
 import mineflayer_pathfinder from "mineflayer-pathfinder";
 import { ActivateTrapdoor, DeactivateTrapdoor, ExitTrapdoor, SetupEnderPearl } from "./trapdor.js";
-import { TEMP_CHEST1, TEMP_CHEST2, TRAPDOOR1 } from "./coords.js";
+import { FOOD_CHEST1, FOOD_CHEST2, MAX_POS_WORK_AREA1, MAX_POS_WORK_AREA2, MIN_POS_WORK_AREA1, MIN_POS_WORK_AREA2, TEMP_CHEST1, TEMP_CHEST2, TRAPDOOR1, TRAPDOOR2 } from "./coords.js";
 import sleep from "./sleep.js";
-import { OpenChest } from "./chests.js";
+import { OpenChest, ScanChests, MAX_RANGE_CHEST } from "./chests.js";
+import { StorageChests } from "./StorageChests.js";
 
 const { pathfinder, Movements, goals } = mineflayer_pathfinder;
 
@@ -38,12 +39,32 @@ bot.once("spawn", async () => {
         bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
     );
 
+    const TRAPDOOR = [TRAPDOOR1, TRAPDOOR2].reduce((closest, chest) =>
+        bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
+    );
+
+    const MIN_AREA = [MIN_POS_WORK_AREA1, MIN_POS_WORK_AREA2].reduce((closest, pos) =>
+        bot.entity.position.distanceTo(pos) < bot.entity.position.distanceTo(closest) ? pos : closest
+    );
+
+    const MAX_AREA = [MAX_POS_WORK_AREA1, MAX_POS_WORK_AREA2].reduce((closest, pos) =>
+        bot.entity.position.distanceTo(pos) < bot.entity.position.distanceTo(closest) ? pos : closest
+    );
+
+    const CACHEFILE = MAX_AREA.equals(MAX_POS_WORK_AREA1) ? "cache1" : "cache2";
+
+    console.log(`Cache detected: ${CACHEFILE}`);
+
+    const CHESTS = await ScanChests(bot, MIN_AREA, MAX_AREA, CACHEFILE);
+
+    const StorageManager = new StorageChests(bot, CHESTS, CACHEFILE == "cache1" ? "withItems" : "empty");
+
     bot.on("chat", async (username, message) => {
         if (message == "!act") {
-            await ActivateTrapdoor(bot, TRAPDOOR1);
+            await ActivateTrapdoor(bot, TRAPDOOR);
         }
         if (message == "!dea") {
-            await DeactivateTrapdoor(bot, TRAPDOOR1);
+            await DeactivateTrapdoor(bot, TRAPDOOR);
         }
         if (message == "!come") {
             const player = bot.players[username];
@@ -52,22 +73,15 @@ bot.once("spawn", async () => {
                 bot.pathfinder.setGoal(goal);
             }
         }
-        if (message == "!ex") {
-            await ExitTrapdoor(bot);
-        }
         if (message == "!get") {
-            const closest_temp_chest = TEMP_CHESTS.reduce((closest, chest) =>
-                bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
-            );
+            await bot.pathfinder.goto(new goals.GoalNear(TEMP_CHEST.x, TEMP_CHEST.y, TEMP_CHEST.z, MAX_RANGE_CHEST));
 
-            await bot.pathfinder.goto(new goals.GoalNear(closest_temp_chest.x, closest_temp_chest.y, closest_temp_chest.z, MAX_RANGE_CHEST));
+            await bot.lookAt(TEMP_CHEST);
 
-            await bot.lookAt(closest_temp_chest);
-
-            const temp_chest = bot.blockAt(closest_temp_chest);
+            const temp_chest = bot.blockAt(TEMP_CHEST);
 
             if (!temp_chest) {
-                throw new Error(`[DROP] Chest at ${closest_food_chest} is not loaded in world.`);
+                throw new Error(`[DROP] Chest at ${TEMP_CHEST} is not loaded in world.`);
             }
 
             const temp_container = await bot.openContainer(temp_chest);
@@ -81,18 +95,14 @@ bot.once("spawn", async () => {
             openchest.close();
         }
         if (message == "!drop") {
-            const closest_temp_chest = TEMP_CHESTS.reduce((closest, chest) =>
-                bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
-            );
+            await bot.pathfinder.goto(new goals.GoalNear(TEMP_CHEST.x, TEMP_CHEST.y, TEMP_CHEST.z, MAX_RANGE_CHEST));
 
-            await bot.pathfinder.goto(new goals.GoalNear(closest_temp_chest.x, closest_temp_chest.y, closest_temp_chest.z, MAX_RANGE_CHEST));
+            await bot.lookAt(TEMP_CHEST);
 
-            await bot.lookAt(closest_temp_chest);
-
-            const temp_chest = bot.blockAt(closest_temp_chest);
+            const temp_chest = bot.blockAt(TEMP_CHEST);
 
             if (!temp_chest) {
-                throw new Error(`[DROP] Chest at ${closest_food_chest} is not loaded in world.`);
+                throw new Error(`[DROP] Chest at ${TEMP_CHEST} is not loaded in world.`);
             }
 
             const temp_container = await bot.openContainer(temp_chest);
@@ -104,6 +114,21 @@ bot.once("spawn", async () => {
             await openchest.depositAllItems();
 
             openchest.close();
+        }
+        if (message == "!obtain") {
+            const chest = await StorageManager.openChestWithItems();
+
+            if(!chest) {
+                console.log("No chests found to get items");
+                return;
+            }
+
+            await chest.getAllItems();
+
+            chest.close();
+        }
+        if (message == "!store") {
+            
         }
     });
 });
