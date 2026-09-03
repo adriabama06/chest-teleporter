@@ -165,7 +165,7 @@ bot.once("spawn", async () => {
 
             if(!isBotOk(bot)) await makeBotOk(bot);
 
-            bot.chat(`/msg ${process.env.USERNAME_STORAGE1} ${process.env.SECRET_MSG} !sending_items`);
+            bot.chat(`/msg ${process.env.USERNAME_STORAGE2} ${process.env.SECRET_MSG} !sending_items`);
         }
     };
 
