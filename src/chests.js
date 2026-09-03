@@ -75,11 +75,11 @@ export class OpenChest {
 
             try {
                 await this.bot.clickWindow(targetItem.slot, 0, 1);
-                await this.bot.waitForTicks(2);
+                if (this.bot.waitForTicks) await this.bot.waitForTicks(2);
             } catch {
                 try {
                     await this.container.withdraw(targetItem.type, null, targetItem.count);
-                    await this.bot.waitForTicks(2);
+                    if (this.bot.waitForTicks) await this.bot.waitForTicks(2);
                 } catch { }
             }
         }
@@ -114,11 +114,11 @@ export class OpenChest {
 
             try {
                 await this.bot.clickWindow(targetItem.slot, 0, 1);
-                await this.bot.waitForTicks(2);
+                if (this.bot.waitForTicks) await this.bot.waitForTicks(2);
             } catch {
                 try {
                     await this.container.withdraw(targetItem.type, null, targetItem.count);
-                    await this.bot.waitForTicks(2);
+                    if (this.bot.waitForTicks) await this.bot.waitForTicks(2);
                 } catch { }
             }
 
@@ -137,6 +137,7 @@ export class OpenChest {
         for (let i = this.container.inventoryStart; i < this.container.inventoryEnd; i++) {
             const slotItem = this.container.slots[i];
             if (!slotItem) continue;
+            if (slotItem.name === "ender_pearl") continue;
             if (this.isFull()) {
                 console.log("No space left in container");
                 break;
@@ -144,11 +145,11 @@ export class OpenChest {
 
             try {
                 await this.bot.clickWindow(i, 0, 1);
-                await this.bot.waitForTicks(2);
+                if (this.bot.waitForTicks) await this.bot.waitForTicks(2);
             } catch {
                 try {
                     await this.container.deposit(slotItem.type, null, slotItem.count);
-                    await this.bot.waitForTicks(2);
+                    if (this.bot.waitForTicks) await this.bot.waitForTicks(2);
                 } catch { break; }
             }
         }
@@ -166,22 +167,22 @@ export class OpenChest {
         }
 
         await this.bot.clickWindow(slot, 0, 0);
-        await this.bot.waitForTicks(2);
+        if (this.bot.waitForTicks) await this.bot.waitForTicks(2);
 
         const botSlots = this.container.slots.slice(this.container.inventoryStart, this.container.inventoryEnd);
         const emptySlot = botSlots.findIndex((s) => !s);
 
         if (emptySlot === -1) {
             await this.bot.clickWindow(slot, 0, 0);
-            await this.bot.waitForTicks(2);
+            if (this.bot.waitForTicks) await this.bot.waitForTicks(2);
             throw new Error("No empty bot inventory slot to pick a single item");
         }
 
         await this.bot.clickWindow(this.container.inventoryStart + emptySlot, 1, 0);
-        await this.bot.waitForTicks(2);
+        if (this.bot.waitForTicks) await this.bot.waitForTicks(2);
 
         await this.bot.clickWindow(slot, 0, 0);
-        await this.bot.waitForTicks(2);
+        if (this.bot.waitForTicks) await this.bot.waitForTicks(2);
     }
 
     /**
@@ -193,12 +194,21 @@ export class OpenChest {
 }
 
 /**
- * Checks if the bot inventory has no items.
+ * Checks if the bot has items to deposit (excluding ender pearls).
+ * @param {import("mineflayer").Bot} bot
+ * @returns {boolean}
+ */
+export function hasItemsToDeposit(bot) {
+    return bot.inventory.items().some(item => item && item.name !== "ender_pearl");
+}
+
+/**
+ * Checks if the bot inventory has no items (or only ender pearls).
  * @param {import("mineflayer").Bot} bot
  * @returns {boolean}
  */
 export function isBotInventoryEmpty(bot) {
-    return bot.inventory.items().length === 0;
+    return !hasItemsToDeposit(bot);
 }
 
 /**

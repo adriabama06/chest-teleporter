@@ -13,7 +13,7 @@ const MIN_FOOD = 6; // 3 food
 /**
  * @param {import("mineflayer").Bot} bot
  */
-export async function isBotOk(bot) {
+export function isBotOk(bot) {
     if(bot.health <= MIN_HEALTH) return false;
     if(bot.food <= MIN_FOOD) return false;
 
@@ -50,7 +50,7 @@ export async function autoEat(bot) {
     await bot.lookAt(chest.position);
     const container = await bot.openContainer(chest);
 
-    await bot.waitForTicks(10);
+    if (bot.waitForTicks) await bot.waitForTicks(10);
 
     const openchest = new OpenChest(bot, chest, container);
     const first_item = container.containerItems()[0];

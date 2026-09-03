@@ -16,14 +16,15 @@ const { goals } = mineflayer_pathfinder;
  * @param {import("vec3").Vec3} trapdoor_coord 
  */
 export async function ActivateTrapdoor(bot, trapdoor_coord) {
-    await bot.pathfinder.goto(new goals.GoalNear(trapdoor_coord.x, trapdoor_coord.y, trapdoor_coord.z, 2.5));
+    if (bot.entity.position.distanceTo(trapdoor_coord) > 2.5) {
+        await bot.pathfinder.goto(new goals.GoalNear(trapdoor_coord.x, trapdoor_coord.y, trapdoor_coord.z, 2.5));
+    }
 
     const trapdoor = bot.blockAt(trapdoor_coord);
 
     if (!trapdoor) {
         throw new Error(`[Trapdoor] Block at ${trapdoor_coord} is not loaded in world.`);
     }
-
 
     if (!trapdoor.getProperties().open) return;
 
@@ -37,7 +38,9 @@ export async function ActivateTrapdoor(bot, trapdoor_coord) {
  * @param {import("vec3").Vec3} trapdoor_coord 
  */
 export async function DeactivateTrapdoor(bot, trapdoor_coord) {
-    await bot.pathfinder.goto(new goals.GoalNear(trapdoor_coord.x, trapdoor_coord.y, trapdoor_coord.z, 2.5));
+    if (bot.entity.position.distanceTo(trapdoor_coord) > 2.5) {
+        await bot.pathfinder.goto(new goals.GoalNear(trapdoor_coord.x, trapdoor_coord.y, trapdoor_coord.z, 2.5));
+    }
 
     const trapdoor = bot.blockAt(trapdoor_coord);
 
@@ -209,8 +212,10 @@ export async function SetupEnderPearl(bot, trapdoor_coord) {
     await bot.waitForTicks(10);
     bot.setControlState("forward", true);
 
-    while (!bot.blockAtCursor(20) || bot.blockAtCursor(20).name != "soul_sand") {
+    let ticks = 0;
+    while ((!bot.blockAtCursor(20) || bot.blockAtCursor(20).name != "soul_sand") && ticks < 60) {
         await bot.waitForTicks(1);
+        ticks++;
     }
 
     await bot.waitForTicks(1); // Walk 1 ticks extra
@@ -228,6 +233,13 @@ export async function SetupEnderPearl(bot, trapdoor_coord) {
     bot.activateItem();
 }
 
+function isBotInWater(bot) {
+    if (bot.entity.isInWater) return true;
+    const block = bot.blockAt(bot.entity.position);
+    if (!block) return false;
+    return block.isWaterlogged || block.name === "water" || block.name === "bubble_column";
+}
+
 /**
  * @param {import("mineflayer").Bot} bot
  */
@@ -236,11 +248,13 @@ export async function ExitTrapdoor(bot) {
 
     final_position.add(YawPitchToVec(bot.entity.yaw, 0).round());
 
-    while (bot.blockAt(bot.entity.position).isWaterlogged) {
+    let ticks = 0;
+    while (isBotInWater(bot) && ticks < 60) {
         bot.setControlState("forward", true);
         bot.setControlState("jump", true);
 
         await bot.waitForTicks(1);
+        ticks++;
     }
 
     bot.setControlState("jump", false);

@@ -2,6 +2,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Vec3 } from "vec3";
 
+process.env.WORK_AREA1 ??= "0,0,0|1,1,1";
+process.env.WORK_AREA2 ??= "0,0,0|1,1,1";
+process.env.TRAPDOOR1 ??= "0,0,0";
+process.env.TEMP_CHEST1 ??= "0,0,0";
+process.env.PEARL_CHEST1 ??= "0,0,0";
+process.env.FOOD_CHEST1 ??= "0,64,0";
+process.env.TRAPDOOR2 ??= "0,0,0";
+process.env.TEMP_CHEST2 ??= "0,0,0";
+process.env.PEARL_CHEST2 ??= "0,0,0";
+process.env.FOOD_CHEST2 ??= "5,64,5";
+
 const { OpenChest, isBotInventoryEmpty, getContainerCapacity } = await import("../src/chests.js");
 
 test("getContainerCapacity defaults to 27", () => {
