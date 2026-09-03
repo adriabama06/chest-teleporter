@@ -26,6 +26,11 @@ test("getContainerCapacity parses NxN window types", () => {
     assert.equal(getContainerCapacity({ type: "chest_9x9" }), 81);
 });
 
+test("getContainerCapacity parses real single and double chest window types", () => {
+    assert.equal(getContainerCapacity({ type: "minecraft:generic_9x3", inventoryStart: 27 }), 27);
+    assert.equal(getContainerCapacity({ type: "minecraft:generic_9x6", inventoryStart: 54 }), 54);
+});
+
 test("getContainerCapacity falls back to inventoryStart", () => {
     assert.equal(getContainerCapacity({ type: "minecraft:hopper", inventoryStart: 5 }), 5);
 });
@@ -56,6 +61,18 @@ test("OpenChest.isFull returns true when every slot is occupied", () => {
     const container = fakeWindow([{ name: "diamond", type: 1, count: 10 }, { name: "dirt", type: 2, count: 3 }], []);
 
     assert.equal(new OpenChest(bot, { position: new Vec3(0, 0, 0) }, container).isFull(), true);
+});
+
+test("OpenChest.isFull checks all 54 slots of a double chest window", () => {
+    const slots = new Array(90).fill(null);
+    const container = { type: "minecraft:generic_9x6", inventoryStart: 54, inventoryEnd: 90, slots };
+    const open = new OpenChest({ clickWindow: async () => { } }, { position: new Vec3(0, 0, 0) }, container);
+
+    for (let i = 0; i < 27; i++) slots[i] = { name: "dirt", type: 1, count: 64 };
+    assert.equal(open.isFull(), false);
+
+    for (let i = 27; i < 54; i++) slots[i] = { name: "dirt", type: 1, count: 64 };
+    assert.equal(open.isFull(), true);
 });
 
 test("OpenChest.isFull ignores the bot inventory slots of the window", () => {

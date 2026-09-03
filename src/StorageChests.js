@@ -1,4 +1,4 @@
-import { OpenChest, goToChest } from "./chests.js";
+import { OpenChest, goToChest, getContainerCapacity } from "./chests.js";
 
 /**
  * @param {import("vec3").Vec3} vec
@@ -32,64 +32,95 @@ export class StorageChests {
         sortChestsByDistance(this.bot, this.chests);
 
         /**
+         * Chests that are (or were) assumed to be empty. They are the
+         * candidates for storing items.
          * @type {import("prismarine-block").Block[]}
          */
         this.emptyChests = [];
         /**
+         * Chests that are (or were) assumed to not be empty (they contain
+         * items). They are the candidates for obtaining items.
          * @type {import("prismarine-block").Block[]}
          */
-        this.withItemsChests = [];
+        this.chestsWithSpace = [];
 
         if (asume_init == "empty") {
             this.emptyChests = [...this.chests];
         } else {
-            this.withItemsChests = [...this.chests];
+            this.chestsWithSpace = [...this.chests];
         }
     }
 
     /**
-     * Opens chests from this.emptyChests (closest first) until one is really empty.
+     * Opens the closest chest that still has free space to deposit items.
      *
-     * Every chest on the list is only *assumed* to be empty: the real state can
-     * only be known once the chest is opened, so each chest is checked after
-     * opening it. Chests that turn out to not be empty are removed from this
-     * list (skipped on the next iterations) and moved to this.withItemsChests.
+     * Chests in this.emptyChests are tried (closest first). The real state is
+     * only known once the chest is opened, so it is verified after opening it:
+     * chests that turn out to be full are moved to this.chestsWithSpace.
      *
-     * @returns {Promise<OpenChest | null>} The opened chest that is empty, or null if there is none.
+     * Chests that were partially filled by previous deposits stay in
+     * this.emptyChests (they still have free space), so the next batches keep
+     * filling the same chest before opening a new one — otherwise double
+     * chests would be abandoned at half full.
+     *
+     * @returns {Promise<OpenChest | null>} The opened chest with free space, or null if there is none.
      */
-    async openEmptyChest() {
+    async openChestWithSpace() {
         return await this.openChestFulfilling(
             this.emptyChests,
-            this.withItemsChests,
-            (openchest) => openchest.isEmpty(),
+            this.chestsWithSpace,
+            (openchest) => !openchest.isFull(),
+            "withSpace",
+            "notEmpty"
+        );
+    }
+
+    /**
+     * Opens the closest chest that has items to take.
+     *
+     * Chests in this.chestsWithSpace are tried (closest first). The real state
+     * is only known once the chest is opened, so it is verified after opening
+     * it: chests that turn out to be empty are moved to this.emptyChests.
+     *
+     * @returns {Promise<OpenChest | null>} The opened chest with items, or null if there is none.
+     */
+    async openChestWithItems() {
+        return await this.openChestFulfilling(
+            this.chestsWithSpace,
+            this.emptyChests,
+            (openchest) => !openchest.isEmpty(),
+            "withItems",
             "empty"
         );
     }
 
     /**
-     * Opens chests from this.withItemsChests (closest first) until one really has items.
+     * Records the state of a chest after depositing items into it.
      *
-     * Every chest on the list is only *assumed* to have items: the real state can
-     * only be known once the chest is opened, so each chest is checked after
-     * opening it. Chests that turn out to be empty are removed from this list
-     * (skipped on the next iterations) and moved to this.emptyChests.
+     * If the chest got full it is moved to this.chestsWithSpace (it is not
+     * empty anymore, so it will not be used for storing again). If it still
+     * has free space it is left in this.emptyChests, so the next batches
+     * continue filling the same chest (e.g. half filled double chests).
      *
-     * @returns {Promise<OpenChest | null>} The opened chest that has items, or null if there is none.
+     * @param {OpenChest} openchest The opened chest that was used to deposit.
+     * @param {boolean} full Whether the chest was full after the deposit.
      */
-    async openChestWithItems() {
-        return await this.openChestFulfilling(
-            this.withItemsChests,
-            this.emptyChests,
-            (openchest) => !openchest.isEmpty(),
-            "withItems"
-        );
+    updateChestAfterDeposit(openchest, full) {
+        if (!full) return;
+
+        const pos = openchest.position;
+
+        this.emptyChests = this.emptyChests.filter((chest) => !chest.position.equals(pos));
+        this.chestsWithSpace.push(openchest.chest);
+
+        console.log(`[STORAGE] Chest at ${vec3ToString(pos)} is now full, moved to the "notEmpty" list`);
     }
 
     /**
      * Opens the chests of `candidates` (closest first) until one fulfills `fulfills`.
      *
      * The chests of `candidates` are assumed to fulfill the requirement, but the
-     * real state can only be checked once the chest is opened, so every chest is
+     * real state can only be known once the chest is opened, so every chest is
      * verified after opening it. The chests that do not fulfill the requirement
      * are removed from `candidates` (so they are skipped on the next iterations)
      * and moved to `reclassifiedTo`, since their real state is now known.
@@ -98,11 +129,12 @@ export class StorageChests {
      * @param {import("prismarine-block").Block[]} reclassifiedTo List where the chests that do not fulfill the requirement are moved to.
      * @param {(openchest: OpenChest) => boolean} fulfills Checks if an opened chest fulfills the requirement.
      * @param {string} requirement Name of the requirement, for log messages.
+     * @param {string} reclassifiedName Name of the reclassifiedTo list, for log messages.
      * @returns {Promise<OpenChest | null>} The opened chest that fulfills the requirement, or null if there is none.
      */
-    async openChestFulfilling(candidates, reclassifiedTo, fulfills, requirement) {
+    async openChestFulfilling(candidates, reclassifiedTo, fulfills, requirement, reclassifiedName) {
         // The bot moves around, so try the closest candidate first on every call
-        sortChestsByDistance(this.bot, candidates);
+        // sortChestsByDistance(this.bot, candidates);
 
         while (candidates.length > 0) {
             const chest = candidates[0];
@@ -142,7 +174,9 @@ export class StorageChests {
             }
 
             if (fulfillsRequirement) {
-                console.log(`[STORAGE] Opened chest at ${vec3ToString(pos)} that fulfills "${requirement}"`);
+                const capacity = getContainerCapacity(openchest.container);
+                const usedSlots = openchest.container.containerItems().length;
+                console.log(`[STORAGE] Opened chest at ${vec3ToString(pos)} that fulfills "${requirement}" (${usedSlots}/${capacity} slots used, window type: ${openchest.container.type})`);
                 return openchest;
             }
 
@@ -154,8 +188,7 @@ export class StorageChests {
             candidates.shift();
             reclassifiedTo.push(chest);
 
-            const otherListName = requirement === "empty" ? "withItems" : "empty";
-            console.log(`[STORAGE] Chest at ${vec3ToString(pos)} does not fulfill "${requirement}", moved to the "${otherListName}" list`);
+            console.log(`[STORAGE] Chest at ${vec3ToString(pos)} does not fulfill "${requirement}", moved to the "${reclassifiedName}" list`);
         }
 
         console.log(`[STORAGE] No chest left fulfills "${requirement}"`);

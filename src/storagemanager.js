@@ -119,15 +119,24 @@ bot.once("spawn", async () => {
         },
         "!store_to_storage": async () => {
             while (hasItemsToDeposit(bot)) {
-                const chest = await StorageManager.openEmptyChest();
+                const chest = await StorageManager.openChestWithSpace();
 
                 if (!chest) {
-                    console.log("[Storage] No empty chests found to store items.");
+                    console.log("[Storage] No chests with free space found to store items.");
                     return false;
                 }
 
                 await chest.depositAllItems();
+
+                // Check the state before closing (the window slot data is fresh)
+                const full = chest.isFull();
+
                 chest.close();
+
+                // If the chest is still not full (e.g. a double chest that got
+                // half filled), keep it tracked so the next batch continues
+                // filling the same chest instead of opening a new one
+                StorageManager.updateChestAfterDeposit(chest, full);
             }
             return true;
         }
