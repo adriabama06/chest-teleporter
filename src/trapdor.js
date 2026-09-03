@@ -221,6 +221,10 @@ export async function SetupEnderPearl(bot, trapdoor_coord) {
 
     bot.setControlState("sneak", false);
 
+    await bot.waitForTicks(20);
+
+    await bot.look(DirectionToYaw(trapdoor.getProperties().facing), -Math.PI / 2); // Look into the direction of the trapdoor & look down
+
     bot.activateItem();
 }
 

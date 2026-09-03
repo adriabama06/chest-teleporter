@@ -1,9 +1,10 @@
 import mineflayer from "mineflayer";
 import mineflayer_pathfinder from "mineflayer-pathfinder";
 import { ActivateTrapdoor, DeactivateTrapdoor, ExitTrapdoor, SetupEnderPearl } from "./trapdor.js";
-import { TEMP_CHEST1, TEMP_CHEST2, TRAPDOOR1 } from "./coords.js";
+import { TEMP_CHEST1, TEMP_CHEST2, TRAPDOOR1, TRAPDOOR2 } from "./coords.js";
 import sleep from "./sleep.js";
-import { OpenChest, MAX_RANGE_CHEST } from "./chests.js";
+import { OpenChest, MAX_RANGE_CHEST, isBotInventoryEmpty } from "./chests.js";
+import { isBotOk, makeBotOk } from "./health.js";
 
 const { pathfinder, Movements, goals } = mineflayer_pathfinder;
 
@@ -30,33 +31,41 @@ for (let i = 814; i <= 815; i++) { // Trapdoor
 }
 
 const TEMP_CHESTS = [TEMP_CHEST1, TEMP_CHEST2];
+const TRAPDOORS = [TRAPDOOR1, TRAPDOOR2];
 
 bot.once("spawn", async () => {
     await bot.waitForChunksToLoad();
     await bot.waitForTicks(10);
     bot.pathfinder.setMovements(defaultMovements);
 
-    bot.on("chat", async (username, message) => {
-        if (message == "!pearl") {
-            await SetupEnderPearl(bot, TRAPDOOR1);
-        }
-        if (message == "!act") {
-            await ActivateTrapdoor(bot, TRAPDOOR1);
-        }
-        if (message == "!dea") {
-            await DeactivateTrapdoor(bot, TRAPDOOR1);
-        }
-        if (message == "!come") {
-            const player = bot.players[username];
-            if (player && player.entity) {
-                const goal = new goals.GoalXZ(player.entity.position.x, player.entity.position.z);
+    // Dev commands
+    const devCommands = {
+        "!pearl": async () => {
+            await SetupEnderPearl(bot, TRAPDOORS.reduce((closest, pos) =>
+                bot.entity.position.distanceTo(pos) < bot.entity.position.distanceTo(closest) ? pos : closest
+            ));
+        },
+        "!act": async () => {
+            await ActivateTrapdoor(bot, TRAPDOORS.reduce((closest, pos) =>
+                bot.entity.position.distanceTo(pos) < bot.entity.position.distanceTo(closest) ? pos : closest
+            ));
+        },
+        "!dea": async () => {
+            await DeactivateTrapdoor(bot, TRAPDOORS.reduce((closest, pos) =>
+                bot.entity.position.distanceTo(pos) < bot.entity.position.distanceTo(closest) ? pos : closest
+            ));
+        },
+        "!come": async () => {
+            const player = bot.nearestEntity((entity) => entity.player && entity.username && entity.username == process.env.BOT_OWNER);
+            if (player) {
+                const goal = new goals.GoalXZ(player.position.x, player.position.z);
                 bot.pathfinder.setGoal(goal);
             }
-        }
-        if (message == "!ex") {
+        },
+        "!ex": async () => {
             await ExitTrapdoor(bot);
-        }
-        if (message == "!get") {
+        },
+        "!get": async () => {
             const closest_temp_chest = TEMP_CHESTS.reduce((closest, chest) =>
                 bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
             );
@@ -80,8 +89,8 @@ bot.once("spawn", async () => {
             await openchest.getAllItems();
 
             openchest.close();
-        }
-        if (message == "!drop") {
+        },
+        "!drop": async () => {
             const closest_temp_chest = TEMP_CHESTS.reduce((closest, chest) =>
                 bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
             );
@@ -105,6 +114,78 @@ bot.once("spawn", async () => {
             await openchest.depositAllItems();
 
             openchest.close();
+        }
+    };
+
+    // Bot communication commands
+    const botCommunicationCommands = {
+        "!start": async () => {
+            bot.chat(`/msg ${process.env.USERNAME_STORAGE1} ${process.env.SECRET_MSG} !prepare_chest`);
+        },
+
+        "!chest_ready": async () => {
+            await devCommands["!get"]();
+
+            bot.chat(`/msg ${process.env.USERNAME_STORAGE2} ${process.env.SECRET_MSG} !sending_items`);
+        },
+
+        "!sending_items_ok": async () => {
+            await bot.waitForTicks(20 * 5);
+
+            await devCommands["!dea"]();
+
+            await devCommands["!ex"]();
+
+            await devCommands["!drop"]();
+
+            bot.chat(`/msg ${process.env.USERNAME_STORAGE2} ${process.env.SECRET_MSG} !store_items`);
+
+            await devCommands["!pearl"]();
+
+            if(!isBotOk(bot)) await makeBotOk(bot);
+
+            bot.chat(`/msg ${process.env.USERNAME_STORAGE1} ${process.env.SECRET_MSG} !request_items`);
+        },
+
+        "!request_items_ok": async () => {
+            await bot.waitForTicks(20 * 5);
+
+            await devCommands["!dea"]();
+
+            await devCommands["!ex"]();
+
+            await devCommands["!get"]();
+
+            if(isBotInventoryEmpty(bot)) {
+                console.log("No items to send.");
+                return;
+            }
+
+            await devCommands["!pearl"]();
+
+            if(!isBotOk(bot)) await makeBotOk(bot);
+
+            bot.chat(`/msg ${process.env.USERNAME_STORAGE1} ${process.env.SECRET_MSG} !sending_items`);
+        }
+    };
+
+    bot.on("messagestr", async (message, position) => {
+        if (position != "chat") return;
+
+        let args = message.split(" ");
+        const i = args.indexOf(process.env.SECRET_MSG);
+
+        if (i == -1) return;
+
+        args = args.slice(i + 1);
+        const command = args[0];
+
+        console.log(message);
+
+        if (devCommands[command]) {
+            await devCommands[command](args);
+        } else if (botCommunicationCommands[command]) {
+            await botCommunicationCommands[command](args);
         }
     });
 });

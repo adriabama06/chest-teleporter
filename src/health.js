@@ -21,6 +21,14 @@ export async function isBotOk(bot) {
 }
 
 /**
+ * @param {import("mineflayer").Bot} bot
+ */
+export async function makeBotOk(bot) {
+    await healthBot(bot);
+    await foodBot(bot);
+}
+
+/**
  * Picks one item from the closest food chest and consumes it.
  * @param {import("mineflayer").Bot} bot
  */

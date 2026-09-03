@@ -5,6 +5,7 @@ import { FOOD_CHEST1, FOOD_CHEST2, MAX_POS_WORK_AREA1, MAX_POS_WORK_AREA2, MIN_P
 import sleep from "./sleep.js";
 import { OpenChest, ScanChests, MAX_RANGE_CHEST, isBotInventoryEmpty } from "./chests.js";
 import { StorageChests } from "./StorageChests.js";
+import { isBotOk, makeBotOk } from "./health.js";
 
 const { pathfinder, Movements, goals } = mineflayer_pathfinder;
 
@@ -59,21 +60,22 @@ bot.once("spawn", async () => {
 
     const StorageManager = new StorageChests(bot, CHESTS, CACHEFILE == "cache1" ? "withItems" : "empty");
 
-    bot.on("chat", async (username, message) => {
-        if (message == "!act") {
+    // Dev commands
+    const devCommands = {
+        "!act": async () => {
             await ActivateTrapdoor(bot, TRAPDOOR);
-        }
-        if (message == "!dea") {
+        },
+        "!dea": async () => {
             await DeactivateTrapdoor(bot, TRAPDOOR);
-        }
-        if (message == "!come") {
-            const player = bot.players[username];
-            if (player && player.entity) {
-                const goal = new goals.GoalXZ(player.entity.position.x, player.entity.position.z);
+        },
+        "!come": async () => {
+            const player = bot.nearestEntity((entity) => entity.player && entity.username && entity.username == process.env.BOT_OWNER);
+            if (player) {
+                const goal = new goals.GoalXZ(player.position.x, player.position.z);
                 bot.pathfinder.setGoal(goal);
             }
-        }
-        if (message == "!get") {
+        },
+        "!get": async () => {
             await bot.pathfinder.goto(new goals.GoalNear(TEMP_CHEST.x, TEMP_CHEST.y, TEMP_CHEST.z, MAX_RANGE_CHEST));
 
             await bot.lookAt(TEMP_CHEST);
@@ -93,8 +95,8 @@ bot.once("spawn", async () => {
             await openchest.getAllItems();
 
             openchest.close();
-        }
-        if (message == "!drop") {
+        },
+        "!drop": async () => {
             await bot.pathfinder.goto(new goals.GoalNear(TEMP_CHEST.x, TEMP_CHEST.y, TEMP_CHEST.z, MAX_RANGE_CHEST));
 
             await bot.lookAt(TEMP_CHEST);
@@ -114,24 +116,25 @@ bot.once("spawn", async () => {
             await openchest.depositAllItems();
 
             openchest.close();
-        }
-        if (message == "!obtain") {
+        },
+        "!obtain": async () => {
             const chest = await StorageManager.openChestWithItems();
 
-            if(!chest) {
+            if (!chest) {
                 console.log("No chests found to get items");
-                return;
+                return false;
             }
 
             await chest.get27Items();
 
             chest.close();
-        }
-        if (message == "!store") {
+            return true;
+        },
+        "!store": async () => {
             while (!isBotInventoryEmpty(bot)) {
                 const chest = await StorageManager.openEmptyChest();
 
-                if(!chest) {
+                if (!chest) {
                     console.log("No empty chests found to store items");
                     return;
                 }
@@ -140,6 +143,61 @@ bot.once("spawn", async () => {
 
                 chest.close();
             }
+        }
+    };
+
+    // Bot communication commands
+    const botCommunicationCommands = {
+        "!prepare_chest": async () => {
+            let obtained = await devCommands["!obtain"]();
+            if (obtained === false) return;
+            await devCommands["!drop"]();
+
+            bot.chat(`/msg ${process.env.USERNAME_TELEPORTER} ${process.env.SECRET_MSG} !chest_ready`);
+
+            obtained = await devCommands["!obtain"]();
+            if (obtained === false) return;
+            await devCommands["!drop"]();
+        },
+
+        "!sending_items": async () => {
+            if(!isBotOk(bot)) await makeBotOk(bot);
+
+            await devCommands["!act"]();
+
+            bot.chat(`/msg ${process.env.USERNAME_TELEPORTER} ${process.env.SECRET_MSG} !sending_items_ok`);
+        },
+
+        "!request_items": async () => {
+            if(!isBotOk(bot)) await makeBotOk(bot);
+
+            await devCommands["!act"]();
+
+            bot.chat(`/msg ${process.env.USERNAME_TELEPORTER} ${process.env.SECRET_MSG} !request_items_ok`);
+
+            const obtained = await devCommands["!obtain"]();
+            if (obtained === false) return;
+            await devCommands["!drop"]();
+        }
+    };
+
+    bot.on("messagestr", async (message, position) => {
+        if (position != "chat") return;
+
+        let args = message.split(" ");
+        const i = args.indexOf(process.env.SECRET_MSG);
+
+        if (i == -1) return;
+
+        args = args.slice(i + 1);
+        const command = args[0];
+
+        console.log(message);
+
+        if (devCommands[command]) {
+            await devCommands[command](args);
+        } else if (botCommunicationCommands[command]) {
+            await botCommunicationCommands[command](args);
         }
     });
 });
