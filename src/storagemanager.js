@@ -3,7 +3,7 @@ import mineflayer_pathfinder from "mineflayer-pathfinder";
 import { ActivateTrapdoor, DeactivateTrapdoor, ExitTrapdoor, SetupEnderPearl } from "./trapdor.js";
 import { FOOD_CHEST1, FOOD_CHEST2, MAX_POS_WORK_AREA1, MAX_POS_WORK_AREA2, MIN_POS_WORK_AREA1, MIN_POS_WORK_AREA2, TEMP_CHEST1, TEMP_CHEST2, TRAPDOOR1, TRAPDOOR2 } from "./coords.js";
 import sleep from "./sleep.js";
-import { OpenChest, ScanChests, MAX_RANGE_CHEST } from "./chests.js";
+import { OpenChest, ScanChests, MAX_RANGE_CHEST, isBotInventoryEmpty } from "./chests.js";
 import { StorageChests } from "./StorageChests.js";
 
 const { pathfinder, Movements, goals } = mineflayer_pathfinder;
@@ -128,7 +128,18 @@ bot.once("spawn", async () => {
             chest.close();
         }
         if (message == "!store") {
-            
+            while (!isBotInventoryEmpty(bot)) {
+                const chest = await StorageManager.openEmptyChest();
+
+                if(!chest) {
+                    console.log("No empty chests found to store items");
+                    return;
+                }
+
+                await chest.depositAllItems();
+
+                chest.close();
+            }
         }
     });
 });

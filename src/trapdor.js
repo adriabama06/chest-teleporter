@@ -6,7 +6,8 @@ import mineflayer_pathfinder from "mineflayer-pathfinder";
 import { Vec3 } from "vec3";
 
 import sleep from "./sleep.js";
-import { findBlocks, parseCoord } from "./coords.js";
+import { findBlocks, parseCoord, PEARL_CHEST1, PEARL_CHEST2 } from "./coords.js";
+import { OpenChest } from "./chests.js";
 
 const { goals } = mineflayer_pathfinder;
 
@@ -18,16 +19,16 @@ export async function ActivateTrapdoor(bot, trapdoor_coord) {
     await bot.pathfinder.goto(new goals.GoalNear(trapdoor_coord.x, trapdoor_coord.y, trapdoor_coord.z, 2.5));
 
     const trapdoor = bot.blockAt(trapdoor_coord);
-    
+
     if (!trapdoor) {
         throw new Error(`[Trapdoor] Block at ${trapdoor_coord} is not loaded in world.`);
     }
 
 
-    if(!trapdoor.getProperties().open) return;
+    if (!trapdoor.getProperties().open) return;
 
     await bot.lookAt(trapdoor_coord);
-    
+
     await bot.activateBlock(trapdoor);
 }
 
@@ -37,14 +38,14 @@ export async function ActivateTrapdoor(bot, trapdoor_coord) {
  */
 export async function DeactivateTrapdoor(bot, trapdoor_coord) {
     await bot.pathfinder.goto(new goals.GoalNear(trapdoor_coord.x, trapdoor_coord.y, trapdoor_coord.z, 2.5));
-    
+
     const trapdoor = bot.blockAt(trapdoor_coord);
 
     if (!trapdoor) {
         throw new Error(`[Trapdoor] Block at ${trapdoor_coord} is not loaded in world.`);
     }
 
-    if(trapdoor.getProperties().open) return;
+    if (trapdoor.getProperties().open) return;
 
     await bot.lookAt(trapdoor_coord);
 
@@ -105,9 +106,9 @@ export function DirectionToYaw(text) {
         case "south":
             return Math.PI;
         case "west":
-            return Math.PI/2;
+            return Math.PI / 2;
         case "east":
-            return -Math.PI/2;
+            return -Math.PI / 2;
         default:
             console.warn(`Unknown direction: ${text}`);
             return 0;
@@ -152,7 +153,41 @@ export function DirectionToVec(text) {
  * @param {import("vec3").Vec3} trapdoor_coord 
  */
 export async function SetupEnderPearl(bot, trapdoor_coord) {
-    if(!bot.inventory.items().find(item => item.name == "ender_pearl")) return;
+    if (!bot.inventory.items().find(item => item.name == "ender_pearl")) {
+        const closest_ender_pearl_chest = [PEARL_CHEST1, PEARL_CHEST2].reduce((closest, chest) =>
+            bot.entity.position.distanceTo(chest) < bot.entity.position.distanceTo(closest) ? chest : closest
+        );
+
+        await bot.pathfinder.goto(new goals.GoalNear(closest_ender_pearl_chest.x, closest_ender_pearl_chest.y, closest_ender_pearl_chest.z, MAX_RANGE_CHEST));
+
+        await bot.lookAt(closest_ender_pearl_chest);
+
+        const ender_pearl_chest = bot.blockAt(closest_ender_pearl_chest);
+
+        if (!ender_pearl_chest) {
+            throw new Error(`[PEARL] Chest at ${closest_ender_pearl_chest} is not loaded in world.`);
+        }
+
+        const ender_pearl_chest_container = await bot.openContainer(ender_pearl_chest);
+
+        await bot.waitForTicks(10);
+
+        const openchest = new OpenChest(bot, ender_pearl_chest, ender_pearl_chest_container);
+
+        const first_item = ender_pearl_chest_container.containerItems()[0];
+
+        if (!first_item) {
+            console.log("[PEARL] I got no ender pearls :c", closest_ender_pearl_chest);
+            openchest.close();
+            return;
+        }
+
+        await openchest.pickItem(first_item);
+
+        openchest.close();
+
+        await bot.waitForTicks(10);
+    }
 
     await bot.equip(bot.inventory.items().find(item => item.name == "ender_pearl"), "hand");
 
@@ -166,7 +201,7 @@ export async function SetupEnderPearl(bot, trapdoor_coord) {
 
     await bot.waitForTicks(10);
 
-    await bot.look(DirectionToYaw(trapdoor.getProperties().facing), -Math.PI/2); // Look into the direction of the trapdoor & look down
+    await bot.look(DirectionToYaw(trapdoor.getProperties().facing), -Math.PI / 2); // Look into the direction of the trapdoor & look down
 
     await bot.waitForTicks(10);
 
@@ -174,7 +209,7 @@ export async function SetupEnderPearl(bot, trapdoor_coord) {
     await bot.waitForTicks(10);
     bot.setControlState("forward", true);
 
-    while(!bot.blockAtCursor(20) || bot.blockAtCursor(20).name != "soul_sand") {
+    while (!bot.blockAtCursor(20) || bot.blockAtCursor(20).name != "soul_sand") {
         await bot.waitForTicks(1);
     }
 
@@ -197,7 +232,7 @@ export async function ExitTrapdoor(bot) {
 
     final_position.add(YawPitchToVec(bot.entity.yaw, 0).round());
 
-    while(bot.blockAt(bot.entity.position).isWaterlogged) {
+    while (bot.blockAt(bot.entity.position).isWaterlogged) {
         bot.setControlState("forward", true);
         bot.setControlState("jump", true);
 
