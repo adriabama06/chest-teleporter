@@ -20,7 +20,16 @@ Copy `.env.example` to `.env`. Everything is env-driven: per-bot credentials (`*
 - Bots coordinate only via private chat: `/msg <bot> <SECRET_MSG> <command>`. Handlers live in `devCommands` (owner/debug) and `botCommunicationCommands` (handshake) in `teleporter.js` / `storagemanager.js`. Even owner-typed commands need the `SECRET_MSG` prefix.
 - Command names are a cross-bot protocol: keep them in sync on both files (short aliases like `!get` exist for backwards compat).
 - Handshake is strictly sequential: `!prepare_chest` → `!chest_ready` → `!sending_items` → `!sending_items_ok` → `!store_items` → `!store_items_ok` → `!request_items` → `!request_items_ok`. A bot replies "ok" only after finishing its own work — earlier race conditions came from breaking this.
-- Stasis chambers: `SetupEnderPearl` throws a pearl into the bubble column (trapdoor open = `DeactivateTrapdoor`); `ActivateTrapdoor` closes the trapdoor, popping the pearl and teleporting the Teleporter to that base.
+
+### Stasis chambers (how the Teleporter moves between bases)
+
+Each base has one chamber: a soul-sand bubble column with a trapdoor on top (`TRAPDOOR1/2`). Every pearl is thrown by the Teleporter itself — `SetupEnderPearl` refills from `PEARL_CHEST1/2` when it runs out. A chamber always holds a stasis pearl thrown during the Teleporter's previous visit.
+
+1. **Arming** — `SetupEnderPearl`: opens the trapdoor (`DeactivateTrapdoor`), moves to the block behind it (`GetBehindTrapdoor` derives the side from the trapdoor's `facing` blockstate), sneaks forward over the column until the cursor raycast hits `soul_sand`, looks straight down and throws the pearl into the bubble column. The upward current keeps the pearl floating in place indefinitely ("stasis pearl").
+2. **Summoning** — `ActivateTrapdoor`: closes the trapdoor. The closed trapdoor pops the floating pearl, which teleports its thrower (the Teleporter) to that base. The Storage bot at a base summons the Teleporter by closing its chamber's trapdoor.
+3. **Exiting** — on arrival the Teleporter opens the trapdoor (`DeactivateTrapdoor`), walks out of the water column (`ExitTrapdoor`) and throws a fresh pearl to re-arm the chamber for the next summon.
+
+Naming is inverted: `DeactivateTrapdoor` *opens* the trapdoor, `ActivateTrapdoor` *closes* it (closing = popping the pearl = teleport).
 
 ## Gotchas
 
