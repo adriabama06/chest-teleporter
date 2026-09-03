@@ -7,7 +7,7 @@ import { Vec3 } from "vec3";
 
 import sleep from "./sleep.js";
 import { findBlocks, parseCoord, PEARL_CHEST1, PEARL_CHEST2 } from "./coords.js";
-import { OpenChest } from "./chests.js";
+import { MAX_RANGE_CHEST, OpenChest } from "./chests.js";
 
 const { goals } = mineflayer_pathfinder;
 
@@ -182,7 +182,7 @@ export async function SetupEnderPearl(bot, trapdoor_coord) {
             return;
         }
 
-        await openchest.pickItem(first_item);
+        await openchest.pickItem(first_item.slot);
 
         openchest.close();
 

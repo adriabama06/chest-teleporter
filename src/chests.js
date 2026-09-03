@@ -160,7 +160,10 @@ export class OpenChest {
      */
     async pickItem(slot) {
         const item = this.container.slots[slot];
-        if (!item) return;
+        if (!item) {
+            console.log("No item found at slot", slot);
+            return;
+        }
 
         await this.bot.clickWindow(slot, 0, 0);
         await this.bot.waitForTicks(2);
