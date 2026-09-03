@@ -67,7 +67,7 @@ export class OpenChest {
     async getAllItems() {
         const items = this.container.containerItems();
 
-        for (let i = 0; i < items.length && this.bot.inventory.items().length < (9*3); i++) {
+        for (let i = 0; i < items.length && this.bot.inventory.items().length < 36; i++) {
             const targetItem = items[i];
             const currentSlotItem = this.container.slots[targetItem.slot];
 
@@ -82,6 +82,51 @@ export class OpenChest {
                     await this.bot.waitForTicks(2);
                 } catch { }
             }
+        }
+    }
+
+    /**
+     * Move to the bot inventory all items (until bot inventory is full or the container is empty).
+     * Only fills the 27 storage slots (main inventory, hotbar excluded), because the items
+     * are later deposited into a temp chest that has only 27 slots, not 36.
+     */
+    async get27Items() {
+        const items = this.container.containerItems();
+
+        // bot.inventory.slots layout: 0-8 crafting/armor, 9-35 main inventory (27), 36-44 hotbar.
+        const MAIN_INVENTORY_START = 9;
+        const HOTBAR_START = 36;
+        const MAX_STORAGE_STACKS = HOTBAR_START - MAIN_INVENTORY_START; // 27
+
+        // bot.inventory.items() can be stale while a chest window is open, so instead of
+        // re-reading it every iteration we take a one-time snapshot of the occupied main
+        // slots BEFORE moving anything, and then keep count ourselves of how many stacks
+        // were actually moved. moved can never exceed the free space there was at the start.
+        const occupiedBefore = this.bot.inventory.slots.slice(MAIN_INVENTORY_START, HOTBAR_START).filter(Boolean).length;
+        const freeSlots = Math.max(0, MAX_STORAGE_STACKS - occupiedBefore);
+        let moved = 0;
+
+        for (let i = 0; i < items.length && moved < freeSlots; i++) {
+            const targetItem = items[i];
+            const currentSlotItem = this.container.slots[targetItem.slot];
+
+            if (!currentSlotItem) continue;
+
+            try {
+                await this.bot.clickWindow(targetItem.slot, 0, 1);
+                await this.bot.waitForTicks(2);
+            } catch {
+                try {
+                    await this.container.withdraw(targetItem.type, null, targetItem.count);
+                    await this.bot.waitForTicks(2);
+                } catch { }
+            }
+
+            moved++;
+        }
+
+        if (items.length > 0 && moved >= freeSlots) {
+            console.log(`No space left in bot storage inventory (${occupiedBefore + moved}/${MAX_STORAGE_STACKS} stacks, hotbar excluded)`);
         }
     }
 

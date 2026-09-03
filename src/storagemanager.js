@@ -123,7 +123,7 @@ bot.once("spawn", async () => {
                 return;
             }
 
-            await chest.getAllItems();
+            await chest.get27Items();
 
             chest.close();
         }
