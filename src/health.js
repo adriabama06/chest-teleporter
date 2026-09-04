@@ -7,7 +7,7 @@ const { goals } = mineflayer_pathfinder;
 
 const FOOD_CHESTS = [FOOD_CHEST1, FOOD_CHEST2];
 
-const MIN_HEALTH = 6; // 3 hearts
+const MIN_HEALTH = 10; // 5 hearts
 const MIN_FOOD = 6; // 3 food
 
 /**
