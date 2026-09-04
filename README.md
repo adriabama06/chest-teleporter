@@ -43,11 +43,22 @@ Transfer all the chests from one base to another using bots in Minecraft. Three 
 
 ### In-Game Setup
 
+Check the video:
+(Recommended)
+[![Example usage](https://img.youtube.com/vi/QK9zxF7qNV8/0.jpg)](https://www.youtube.com/watch?v=QK9zxF7qNV8) (temporal template video while the video is begin made)
+
+Bots accounts:
+- If you are using a ZenitProxy or something like that, make sure that the in-game nametags matches the USERNAME_xxx, if not, the bots will can not comunicate using /msg.
+- All the bots must have their inventory empty.
+- STORAGE1 and STORAGE2 must be at their places, what I mean is: STORAGE1 must be at the place where will send the chests; STORAGE2 must be at the place where he will recive the items.
+- TELEPORTER must be at start with STORAGE1 and must have ready an stasis chamber with an ender pearl active where STORAGE2 is.
+
 The bots expect a specific setup per base:
 
 - **Work area** (`WORK_AREA1` / `WORK_AREA2`): rectangular area (two corners) containing all the warehouse chests of that base.
 - **Temp chest** (`TEMP_CHEST1` / `TEMP_CHEST2`): the handoff chest where the Teleporter drops/picks items.
 - **Stasis chamber** (`TRAPDOOR1` / `TRAPDOOR2`): a bubble column with a trapdoor on top. `SetupEnderPearl` throws a pearl into the column (trapdoor open); closing the trapdoor pops the pearl and teleports the Teleporter to that base.
+- **Pearl chest** (`PEARL_CHEST1` / `PEARL_CHEST2`): chest with ender pearls to use to auto setup the stasis chamber on every teleport.
 - **Food chest** (`FOOD_CHEST1` / `FOOD_CHEST2`): chest with food for the storage manager to eat.
 - The Teleporter needs ender pearls in its inventory (they are never deposited).
 
