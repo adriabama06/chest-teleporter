@@ -45,7 +45,7 @@ Transfer all the chests from one base to another using bots in Minecraft. Three 
 
 Check the video:
 (Recommended)
-[![Example usage](https://img.youtube.com/vi/QK9zxF7qNV8/0.jpg)](https://www.youtube.com/watch?v=QK9zxF7qNV8) (temporal template video while the video is begin made)
+[![Example usage](https://img.youtube.com/vi/ZUEWj38lAeY/0.jpg)](https://www.youtube.com/watch?v=ZUEWj38lAeY) (temporal template video while the video is begin made)
 
 Bots accounts:
 - If you are using a ZenitProxy or something like that, make sure that the in-game nametags matches the USERNAME_xxx, if not, the bots will can not comunicate using /msg.
